@@ -3,7 +3,7 @@
 Lets a Home Assistant voice satellite reach the Hermes agent harness over the
 LAN. No third-party messaging service in the path.
 
-Hermes runs on `hermes.zinger.org`; HA runs on `ha.zinger.org`; the satellite is
+Hermes runs on `hermes.example.com`; HA runs on `ha.example.com`; the satellite is
 an Echo Show 8 running LineageOS with VACA / View Assist.
 
 ```
@@ -58,7 +58,7 @@ full `Bearer <token>` header value while the env var holds the bare token.
 
 ## 2. Install the bridge
 
-On `hermes.zinger.org`, as the user that runs `hermes`:
+On `hermes.example.com`, as the user that runs `hermes`:
 
 ```bash
 mkdir -p ~/hermes_bridge && cd ~/hermes_bridge
@@ -83,12 +83,12 @@ set -a && . bridge.env && set +a
 **Verify from the HA host, not localhost** — you are proving HA's network path:
 
 ```bash
-curl -s http://hermes.zinger.org:8420/health | jq
+curl -s http://hermes.example.com:8420/health | jq
 
-curl -s -X POST http://hermes.zinger.org:8420/ask \
+curl -s -X POST http://hermes.example.com:8420/ask \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"text":"what is the weather in Chantilly","device_id":"zeds_office"}'
+  -d '{"text":"what is the weather in Dallas","device_id":"echo_screen_8"}'
 ```
 
 You get a `request_id` back immediately. Watch the console for the run.
@@ -100,7 +100,7 @@ You get a `request_id` back immediately. Watch the console for the run.
 Insert the three snippets into their named files. Then:
 
 1. Substitute your real entity ids in `automations.snippet.yaml`
-   (`media_player.vaca_db7fb22fa_media_player`, `tts.piper`)
+   (`media_player.vaca_echo_screen8`, `tts.piper`)
 2. Developer Tools → YAML → Reload all YAML
 3. Confirm **both** "Hermes — ask" and "Hermes — reply" appear under
    Settings → Automations
@@ -113,7 +113,7 @@ action: tts.speak
 target:
   entity_id: tts.piper
 data:
-  media_player_entity_id: media_player.vaca_db7fb22fa_media_player
+  media_player_entity_id: media_player.echo_screen_8
   message: test
 ```
 
@@ -121,7 +121,7 @@ data:
 # Does the rest_command reach the bridge?
 action: rest_command.hermes_ask
 data:
-  question: what is the weather in Chantilly
+  question: what is the weather in Dallas
   device: zeds_office
 ```
 
@@ -155,7 +155,7 @@ Work the path in order; each check rules out one hop.
 | Bridge POSTs `200` but nothing happens | **HA returns 200 for unregistered webhook ids.** The reply automation is missing or the id doesn't match. |
 | Reply automation fires but errors | Wrong entity ids in `tts.speak`. |
 
-`curl -s http://hermes.zinger.org:8420/health | jq .last` shows the last
+`curl -s http://hermes.example.com:8420/health | jq .last` shows the last
 result per device, including whether it was a `reply` or an `error`.
 
 ## Known behaviour
