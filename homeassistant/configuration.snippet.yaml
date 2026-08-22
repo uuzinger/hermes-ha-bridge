@@ -7,7 +7,7 @@
 
 rest_command:
   hermes_ask:
-    url: "http://hermes.zinger.org:8420/ask"
+    url: "http://hermes.example.com:8420/ask"
     method: POST
     headers:
       # secrets.yaml holds the full header value including "Bearer ".
