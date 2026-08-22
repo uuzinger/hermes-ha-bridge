@@ -1,0 +1,135 @@
+# ===========================================================================
+# INSERT INTO: automations.yaml
+#
+# APPEND these list items. Do NOT include a top-level `automation:` key —
+# automations.yaml is already the contents of that key, and adding it again
+# produces a "malformed key" error on reload.
+#
+# Every id below is at column zero, prefixed with "- ".
+#
+# Substitute before use:
+#   media_player.vaca_db7fb22fa_media_player   your VACA player
+#   tts.piper                                  your Piper TTS entity
+#   zeds_office                                must match ALLOWED_DEVICES
+# ===========================================================================
+
+
+# --- 1. Voice trigger ------------------------------------------------------
+# Fires the question and returns immediately. The spoken ack is what covers
+# the 15-40 seconds of agent run time.
+
+- id: hermes_ask_trigger
+  alias: "Hermes — ask"
+  mode: parallel
+  triggers:
+    - trigger: conversation
+      command:
+        - "ask hermes {question}"
+        - "ask hermes about {question}"
+  actions:
+    - action: rest_command.hermes_ask
+      data:
+        question: "{{ trigger.slots.question }}"
+        # Static for one satellite. With several, resolve from
+        # trigger.device_id to your per-device key.
+        device: "zeds_office"
+    - set_conversation_response: "Let me think about that."
+
+
+# --- 2. Reply handler ------------------------------------------------------
+# The bridge POSTs here when the run completes. START WITH THIS MINIMAL
+# VERSION — get speech working before adding display calls.
+#
+# NOTE: HA returns 200 for an unregistered webhook id, so a 200 in the bridge
+# log does NOT prove this automation exists. Confirm it appears under
+# Settings > Automations.
+
+- id: hermes_reply_handler
+  alias: "Hermes — reply"
+  mode: parallel
+  triggers:
+    - trigger: webhook
+      webhook_id: !secret hermes_reply_webhook_id
+      allowed_methods: [POST]
+      local_only: true
+  actions:
+    - action: tts.speak
+      target:
+        entity_id: tts.piper
+      data:
+        # The VACA player, not the Music Assistant one — VACA ducks music
+        # under TTS automatically.
+        media_player_entity_id: media_player.vaca_db7fb22fa_media_player
+        message: "{{ trigger.json.text }}"
+
+
+# --- 3. Reply handler with display (OPTIONAL) ------------------------------
+# Swap this in for #2 once speech works. Disable #2 first — running both
+# speaks the answer twice.
+#
+# View Assist service names and parameters vary by version; check yours.
+# The display calls use continue_on_error so a mismatch degrades to
+# voice-only rather than breaking the reply.
+
+# - id: hermes_reply_handler_display
+#   alias: "Hermes — reply (with display)"
+#   mode: parallel
+#   triggers:
+#     - trigger: webhook
+#       webhook_id: !secret hermes_reply_webhook_id
+#       allowed_methods: [POST]
+#       local_only: true
+#   actions:
+#     - variables:
+#         answer: "{{ trigger.json.text }}"
+#     - action: view_assist.set_state
+#       data:
+#         device: media_player.vaca_db7fb22fa_media_player
+#         title: "Hermes"
+#         text: "{{ answer }}"
+#       continue_on_error: true
+#     - action: view_assist.navigate
+#       data:
+#         device: media_player.vaca_db7fb22fa_media_player
+#         path: "info"
+#       continue_on_error: true
+#     - action: tts.speak
+#       target:
+#         entity_id: tts.piper
+#       data:
+#         media_player_entity_id: media_player.vaca_db7fb22fa_media_player
+#         message: "{{ answer }}"
+#     - delay: "00:00:30"
+#     - action: view_assist.navigate
+#       data:
+#         device: media_player.vaca_db7fb22fa_media_player
+#         path: "clock"
+#       continue_on_error: true
+
+
+# --- 4. Timeout guard (OPTIONAL) -------------------------------------------
+# If no reply lands, say so rather than leaving the user waiting.
+
+# - id: hermes_timeout_guard
+#   alias: "Hermes — timeout guard"
+#   mode: restart
+#   triggers:
+#     - trigger: state
+#       entity_id: automation.hermes_ask
+#       attribute: last_triggered
+#   actions:
+#     - wait_for_trigger:
+#         - trigger: webhook
+#           webhook_id: !secret hermes_reply_webhook_id
+#           allowed_methods: [POST]
+#           local_only: true
+#       timeout: "00:03:30"
+#       continue_on_timeout: true
+#     - condition: template
+#       value_template: "{{ wait.trigger is none }}"
+#     - action: tts.speak
+#       target:
+#         entity_id: tts.piper
+#       data:
+#         media_player_entity_id: media_player.vaca_db7fb22fa_media_player
+#         message: "Sorry, that took too long."

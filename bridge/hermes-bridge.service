@@ -1,0 +1,25 @@
+[Unit]
+Description=Hermes bridge for Home Assistant
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=zinger
+WorkingDirectory=/home/zinger/hermes_bridge
+EnvironmentFile=/home/zinger/hermes_bridge/bridge.env
+
+# Bind to the LAN address, not 0.0.0.0. This endpoint reaches an agent with
+# terminal access; it must never be routable from outside the LAN.
+ExecStart=/home/zinger/hermes_bridge/.venv-bridge/bin/uvicorn hermes_bridge:app \
+    --host 192.168.1.CHANGEME \
+    --port 8420
+
+Restart=on-failure
+RestartSec=5
+
+# Light hardening. Remove ProtectHome if hermes needs paths under /home.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

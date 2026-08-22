@@ -1,0 +1,21 @@
+# ===========================================================================
+# INSERT INTO: configuration.yaml
+#
+# If you already have a top-level `rest_command:` key, do NOT add a second
+# one — add just the `hermes_ask:` block underneath the existing key.
+# ===========================================================================
+
+rest_command:
+  hermes_ask:
+    url: "http://hermes.zinger.org:8420/ask"
+    method: POST
+    headers:
+      # secrets.yaml holds the full header value including "Bearer ".
+      Authorization: !secret hermes_bridge_token
+      Content-Type: application/json
+    # `| tojson` quotes and escapes — an STT transcript containing an
+    # apostrophe would otherwise produce malformed JSON.
+    payload: >-
+      {"text": {{ question | tojson }},
+       "device_id": {{ device | tojson }}}
+    timeout: 10
